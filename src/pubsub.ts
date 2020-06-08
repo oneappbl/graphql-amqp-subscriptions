@@ -2,20 +2,17 @@ import { PubSubEngine } from 'graphql-subscriptions';
 import amqp from 'amqplib';
 import Debug from 'debug';
 
-import { PubSubAMQPOptions } from './interfaces';
 import { AMQPPublisher } from './amqp/publisher';
 import { AMQPSubscriber } from './amqp/subscriber';
+import { Exchange, PubSubAMQPConfig } from './amqp/interfaces';
 import { PubSubAsyncIterator } from './pubsub-async-iterator';
 
 const logger = Debug('AMQPPubSub');
 
 export class AMQPPubSub implements PubSubEngine {
-
-  private connection: amqp.Connection;
-  private exchange: string;
-
   private publisher: AMQPPublisher;
   private subscriber: AMQPSubscriber;
+  private exchange: Exchange;
 
   private subscriptionMap: { [subId: number]: { routingKey: string, listener: Function } };
   private subsRefsMap: { [trigger: string]: Array<number> };
@@ -23,31 +20,33 @@ export class AMQPPubSub implements PubSubEngine {
   private currentSubscriptionId: number;
 
   constructor(
-    options: PubSubAMQPOptions
+    config: PubSubAMQPConfig
   ) {
-    // Setup Variables
-    this.connection = options.connection;
-    this.exchange = options.exchange || 'graphql_subscriptions';
-
     this.subscriptionMap = {};
     this.subsRefsMap = {};
     this.unsubscribeMap = {};
     this.currentSubscriptionId = 0;
 
     // Initialize AMQP Helper
-    this.publisher = new AMQPPublisher(this.connection, logger);
-    this.subscriber = new AMQPSubscriber(this.connection, logger);
+    this.publisher = new AMQPPublisher(config, logger);
+    this.subscriber = new AMQPSubscriber(config, logger);
+
+    this.exchange = config.exchange;
 
     logger('Finished initializing');
   }
 
   public async publish(routingKey: string, payload: any): Promise<void> {
-    logger('Publishing message to exchange "%s" for key "%s" (%j)', this.exchange, routingKey, payload);
-    return this.publisher.publish(this.exchange, routingKey, payload);
+    logger('Publishing message to exchange "%s" for key "%s" (%j)', this.exchange.name, routingKey, payload);
+    return this.publisher.publish(routingKey, payload);
   }
 
   public async subscribe(routingKey: string, onMessage: (message: any) => void): Promise<number> {
     const id = this.currentSubscriptionId++;
+
+    if (routingKey === 'fanout') {
+      routingKey = Math.random().toString(36).substring(2);
+    }
     logger('Subscribing to "%s" with id: "%s"', routingKey, id);
 
     this.subscriptionMap[id] = {
@@ -70,7 +69,7 @@ export class AMQPPubSub implements PubSubEngine {
     const existingDispose = this.unsubscribeMap[routingKey];
     // Get rid of exisiting subscription while we get a new one.
     const [newDispose] = await Promise.all([
-      this.subscriber.subscribe(this.exchange, routingKey, this.onMessage),
+      this.subscriber.subscribe(routingKey, this.onMessage),
       existingDispose ? existingDispose() : Promise.resolve()
     ]);
 
@@ -89,7 +88,7 @@ export class AMQPPubSub implements PubSubEngine {
     if (!refs) {
       throw new Error(`There is no subscription ref for routing key "${routingKey}", id "${subId}"`);
     }
-    logger('Unsubscribing from "%s" with id: "%s"', routingKey, subId);
+    logger('Unsubscribing from "%s" with id: "%s". Refs = "%j"', routingKey, subId, refs);
 
     if (refs.length === 1) {
       delete this.subscriptionMap[subId];
@@ -105,8 +104,8 @@ export class AMQPPubSub implements PubSubEngine {
     delete this.subscriptionMap[subId];
   }
 
-  public asyncIterator<T>(triggers: string | string[]): AsyncIterator<T> {
-    return new PubSubAsyncIterator<T>(this, triggers);
+  public asyncIterator<T>(eventName: string | string[]): AsyncIterator<T> {
+    return new PubSubAsyncIterator<T>(this, eventName);
   }
 
   private onMessage = (routingKey: string, message: any): void => {
@@ -127,6 +126,7 @@ export class AMQPPubSub implements PubSubEngine {
   }
 
   private async unsubscribeForKey(routingKey: string): Promise<void> {
+    logger('unsubscribeForKey: "%s"', routingKey);
     const dispose = this.unsubscribeMap[routingKey];
     delete this.unsubscribeMap[routingKey];
     delete this.subsRefsMap[routingKey];
