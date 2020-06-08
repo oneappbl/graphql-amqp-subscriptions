@@ -23,7 +23,7 @@ junit
 .lock-wscript
 
 # Source files
-src
+# src
 
 # Test files
 test
