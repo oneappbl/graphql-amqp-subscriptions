@@ -4,7 +4,7 @@ import Debug from 'debug';
 
 import { AMQPPublisher } from './amqp/publisher';
 import { AMQPSubscriber } from './amqp/subscriber';
-import { Exchange, PubSubAMQPConfig } from './amqp/interfaces';
+import { Exchange, PubSubAMQPConfig, AsyncIteratorWithSubscribeAll } from './amqp/interfaces';
 import { PubSubAsyncIterator } from './pubsub-async-iterator';
 
 const logger = Debug('AMQPPubSub');
@@ -104,7 +104,7 @@ export class AMQPPubSub implements PubSubEngine {
     delete this.subscriptionMap[subId];
   }
 
-  public asyncIterator<T>(eventName: string | string[]): AsyncIterator<T> {
+  public asyncIterator<T>(eventName: string | string[]): AsyncIteratorWithSubscribeAll<T> {
     return new PubSubAsyncIterator<T>(this, eventName);
   }
 

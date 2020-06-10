@@ -23,3 +23,7 @@ export interface PubSubAMQPConfig {
   exchange: Exchange;
   queue: Queue;
 }
+
+export interface AsyncIteratorWithSubscribeAll<T> extends  AsyncIterator<T> {
+  didAllSubscribe: () => Promise<number[]>;
+}
