@@ -1,6 +1,5 @@
 import { $$asyncIterator } from 'iterall';
-import { PubSubEngine } from 'graphql-subscriptions';
-import { AsyncIteratorWithSubscribeAll } from './amqp/interfaces';
+import { AsyncIteratorWithSubscribeAll, PubSubEngineWithCleanup } from './amqp/interfaces';
 
 /**
  * A class for digesting PubSubEngine events via the new AsyncIterator interface.
@@ -38,9 +37,9 @@ export class PubSubAsyncIterator<T> implements AsyncIteratorWithSubscribeAll<T> 
   private eventsArray: string[];
   private allSubscribed: Promise<number[]>;
   private listening: boolean;
-  private pubsub: PubSubEngine;
+  private pubsub: PubSubEngineWithCleanup;
 
-  constructor(pubsub: PubSubEngine, eventNames: string | string[]) {
+  constructor(pubsub: PubSubEngineWithCleanup, eventNames: string | string[]) {
     this.pubsub = pubsub;
     this.pullQueue = [];
     this.pushQueue = [];
@@ -108,6 +107,7 @@ export class PubSubAsyncIterator<T> implements AsyncIteratorWithSubscribeAll<T> 
       this.pullQueue.forEach(resolve => resolve({ value: undefined, done: true }));
       this.pullQueue.length = 0;
       this.pushQueue.length = 0;
+      this.pubsub.cleanupConnections();
     }
   }
 

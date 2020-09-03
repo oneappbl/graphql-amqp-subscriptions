@@ -1,4 +1,5 @@
 import amqp from 'amqplib';
+import { PubSubEngine } from 'graphql-subscriptions';
 
 export interface Exchange {
   name: string;
@@ -24,6 +25,10 @@ export interface PubSubAMQPConfig {
   queue: Queue;
 }
 
-export interface AsyncIteratorWithSubscribeAll<T> extends  AsyncIterator<T> {
+export interface AsyncIteratorWithSubscribeAll<T> extends AsyncIterator<T> {
   didAllSubscribe: () => Promise<number[]>;
+}
+
+export interface PubSubEngineWithCleanup extends PubSubEngine {
+  cleanupConnections: () => void;
 }

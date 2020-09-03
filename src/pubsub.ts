@@ -1,15 +1,13 @@
-import { PubSubEngine } from 'graphql-subscriptions';
-import amqp from 'amqplib';
 import Debug from 'debug';
 
 import { AMQPPublisher } from './amqp/publisher';
 import { AMQPSubscriber } from './amqp/subscriber';
-import { Exchange, PubSubAMQPConfig, AsyncIteratorWithSubscribeAll } from './amqp/interfaces';
+import { Exchange, PubSubAMQPConfig, AsyncIteratorWithSubscribeAll, PubSubEngineWithCleanup } from './amqp/interfaces';
 import { PubSubAsyncIterator } from './pubsub-async-iterator';
 
 const logger = Debug('AMQPPubSub');
 
-export class AMQPPubSub implements PubSubEngine {
+export class AMQPPubSub implements PubSubEngineWithCleanup {
   private publisher: AMQPPublisher;
   private subscriber: AMQPSubscriber;
   private exchange: Exchange;
@@ -106,6 +104,15 @@ export class AMQPPubSub implements PubSubEngine {
 
   public asyncIterator<T>(eventName: string | string[]): AsyncIteratorWithSubscribeAll<T> {
     return new PubSubAsyncIterator<T>(this, eventName);
+  }
+
+  public cleanupConnections(): void {
+    if (this.publisher) {
+      this.publisher.close();
+    }
+    if (this.subscriber) {
+      this.subscriber.close();
+    }
   }
 
   private onMessage = (routingKey: string, message: any): void => {

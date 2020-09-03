@@ -47,9 +47,17 @@ export class AMQPSubscriber {
     };
   }
 
+  public close(): void {
+    if (this.channel) {
+      this.channel.close();
+      this.logger('sub channel closed');
+    }
+  }
+
   private async getOrCreateChannel(): Promise<amqp.Channel> {
     if (!this.channel) {
       this.channel = await this.connection.createChannel();
+      this.logger('sub channel created');
       this.channel.on('error', (err) => { this.logger('Subscriber channel error: "%j"', err); });
     }
     return this.channel;
