@@ -9,6 +9,7 @@ export class AMQPSubscriber {
   private exchange: Exchange;
   private queue: Queue;
   private channel: amqp.Channel | null = null;
+  private creatingChannel: boolean = false;
 
   constructor(
     private config: PubSubAMQPConfig,
@@ -47,18 +48,30 @@ export class AMQPSubscriber {
     };
   }
 
-  public close(): void {
+  public async close(): Promise<void> {
     if (this.channel) {
-      this.channel.close();
+      await this.channel.close();
       this.logger('sub channel closed');
+      this.channel = null;
     }
   }
 
+  private async sleep(i: number): Promise<void> {
+    return new Promise(resolve =>
+      global.setTimeout(resolve, i)
+    );
+  }
+
   private async getOrCreateChannel(): Promise<amqp.Channel> {
-    if (!this.channel) {
+    if (!this.creatingChannel && !this.channel) {
+      this.creatingChannel = true;
       this.channel = await this.connection.createChannel();
       this.logger('sub channel created');
       this.channel.on('error', (err) => { this.logger('Subscriber channel error: "%j"', err); });
+    }
+    while (!this.channel) {
+      this.logger('still no sub channel');
+      await this.sleep(200);
     }
     return this.channel;
   }

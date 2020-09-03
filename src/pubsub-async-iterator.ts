@@ -100,10 +100,10 @@ export class PubSubAsyncIterator<T> implements AsyncIteratorWithSubscribeAll<T> 
     });
   }
 
-  private emptyQueue(subscriptionIds: number[]) {
+  private async emptyQueue(subscriptionIds: number[]) {
     if (this.listening) {
       this.listening = false;
-      this.unsubscribeAll(subscriptionIds);
+      await this.unsubscribeAll(subscriptionIds);
       this.pullQueue.forEach(resolve => resolve({ value: undefined, done: true }));
       this.pullQueue.length = 0;
       this.pushQueue.length = 0;
@@ -111,9 +111,9 @@ export class PubSubAsyncIterator<T> implements AsyncIteratorWithSubscribeAll<T> 
     }
   }
 
-  private unsubscribeAll(subscriptionIds: number[]) {
+  private async unsubscribeAll(subscriptionIds: number[]) {
     for (const subscriptionId of subscriptionIds) {
-      this.pubsub.unsubscribe(subscriptionId);
+      await this.pubsub.unsubscribe(subscriptionId);
     }
   }
 
