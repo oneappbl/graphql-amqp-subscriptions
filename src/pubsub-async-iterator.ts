@@ -78,7 +78,15 @@ export class PubSubAsyncIterator<T> implements AsyncIteratorWithSubscribeAll<T> 
     return this.allSubscribed;
   }
 
-  private async pushValue(event: any) {
+  public getPushQueueLength() {
+    return this.pushQueue.length;
+  }
+
+  public getPullQueueLength() {
+    return this.pullQueue.length;
+  }
+
+  protected async pushValue(event: any) {
     await this.allSubscribed;
     if (this.pullQueue.length !== 0) {
       let element = this.pullQueue.shift();
