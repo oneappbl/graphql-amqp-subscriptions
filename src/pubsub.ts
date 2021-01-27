@@ -107,11 +107,15 @@ export class AMQPPubSub implements PubSubEngineWithCleanup {
   }
 
   public cleanupConnections(): void {
-    if (this.publisher) {
-      this.publisher.close();
-    }
-    if (this.subscriber) {
-      this.subscriber.close();
+    try {
+      if (this.publisher) {
+        this.publisher.close();
+      }
+      if (this.subscriber) {
+        this.subscriber.close();
+      }
+    } catch (err) {
+      logger('pubsub.cleanupConnections() error - ' + err);
     }
   }
 
@@ -137,7 +141,11 @@ export class AMQPPubSub implements PubSubEngineWithCleanup {
     const dispose = this.unsubscribeMap[routingKey];
     delete this.unsubscribeMap[routingKey];
     delete this.subsRefsMap[routingKey];
-    await dispose();
+    try {
+      await dispose();
+    } catch (err) {
+      logger('unsubscribeForKey error "%j", Routing Key "%s"', err, routingKey);
+    }
   }
 
 }
