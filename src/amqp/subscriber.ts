@@ -50,9 +50,10 @@ export class AMQPSubscriber {
 
   public async close(): Promise<void> {
     if (this.channel) {
-      await this.channel.close();
-      this.logger('sub channel closed');
+      const ch = this.channel;
       this.channel = null;
+      await ch.close();
+      this.logger('sub channel closed');
     }
   }
 
@@ -66,6 +67,7 @@ export class AMQPSubscriber {
     if (!this.creatingChannel && !this.channel) {
       this.creatingChannel = true;
       this.channel = await this.connection.createChannel();
+      this.creatingChannel = false;
       this.logger('sub channel created');
       this.channel.on('error', (err) => { this.logger('Subscriber channel error: "%j"', err); });
     }

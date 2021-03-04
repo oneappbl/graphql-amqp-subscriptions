@@ -25,9 +25,10 @@ export class AMQPPublisher {
 
   public async close(): Promise<void> {
     if (this.channel) {
-      await this.channel.close();
-      this.logger('pub channel closed');
+      const ch = this.channel;
       this.channel = null;
+      await ch.close();
+      this.logger('pub channel closed');
     }
   }
 
